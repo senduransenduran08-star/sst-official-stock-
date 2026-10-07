@@ -1,0 +1,765 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SST Official Stock Manager</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+    <style>
+        * { box-sizing: border-box; font-family: 'Segoe UI', Arial, sans-serif; }
+        
+        body {
+            background-color: #f4f6f9;
+            margin: 0;
+            padding: 20px;
+            color: #333;
+        }
+
+        .container {
+            max-width: 1100px;
+            margin: 0 auto;
+            background: #fff;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.08);
+        }
+
+        .controls-bar {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+            background: #e9ecef;
+            padding: 12px;
+            border-radius: 8px;
+        }
+
+        button {
+            padding: 10px 16px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: bold;
+            font-size: 13px;
+            transition: 0.2s;
+        }
+
+        .btn-save { background: #27ae60; color: white; }
+        .btn-next { background: #2980b9; color: white; }
+        .btn-undo { background: #8e44ad; color: white; }
+        .btn-pdf { background: #c0392b; color: white; }
+        button:hover { opacity: 0.9; transform: translateY(-1px); }
+
+        .header {
+            background: linear-gradient(135deg, #0083b0 0%, #00b4db 100%);
+            color: white;
+            padding: 20px;
+            border-radius: 8px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+            gap: 15px;
+        }
+
+        .header-left { display: flex; align-items: center; gap: 15px; }
+
+        .logo-box {
+            width: 90px;
+            height: 90px;
+            border: 2px dashed #fff;
+            border-radius: 8px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background: rgba(255,255,255,0.2);
+            cursor: pointer;
+            text-align: center;
+            font-size: 11px;
+            font-weight: bold;
+            overflow: hidden;
+            flex-shrink: 0;
+        }
+
+        .logo-box img { width: 100%; height: 100%; object-fit: cover; }
+
+        .header-inputs input {
+            background: rgba(255, 255, 255, 0.25);
+            border: 1px solid #fff;
+            color: #fff;
+            padding: 5px 10px;
+            border-radius: 4px;
+            font-weight: bold;
+            margin-top: 5px;
+        }
+        .header-inputs input::placeholder { color: #ddd; }
+
+        .tab-bar { display: flex; gap: 5px; border-bottom: 2px solid #0083b0; margin-bottom: 20px; }
+        .tab-btn {
+            padding: 10px 20px;
+            background: #e9ecef;
+            border: none;
+            border-radius: 6px 6px 0 0;
+            font-weight: bold;
+            cursor: pointer;
+            color: #555;
+        }
+        .tab-btn.active { background: #0083b0; color: white; }
+
+        /* PDF-இல் துண்டாகாமல் முழுமையாக அச்சிடக்கூடிய டேபிள் */
+        .table-wrap {
+            width: 100%;
+            overflow: visible; /* உள்ளுக்குள் ஸ்க்ரோல் ஆவதைத் தடுக்கிறது */
+            margin-bottom: 20px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            table-layout: fixed; /* காலம்கள் கட் ஆகாமல் தடுக்கிறது */
+        }
+
+        th, td {
+            border: 1px solid #dee2e6;
+            padding: 8px 5px;
+            text-align: center;
+            font-size: 12px;
+            word-wrap: break-word;
+        }
+
+        th { background-color: #2c3e50; color: white; font-weight: 600; }
+        tr:nth-child(even) { background-color: #f8f9fa; }
+        tr { page-break-inside: avoid !important; break-inside: avoid !important; }
+
+        .col-name { width: 32%; text-align: left; padding-left: 8px; font-weight: 600; }
+        .col-qty { width: 11%; }
+        .col-price { width: 12%; }
+        .col-amt { width: 13%; font-weight: bold; color: #0083b0; }
+
+        input[type="number"], input[type="text"], input[type="date"] {
+            width: 95%;
+            padding: 5px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            text-align: center;
+            font-weight: bold;
+            font-size: 12px;
+        }
+
+        .search-input {
+            width: 100%;
+            max-width: 300px;
+            padding: 8px;
+            margin-bottom: 12px;
+            border: 1px solid #0083b0;
+            border-radius: 5px;
+        }
+
+        .recon-section {
+            display: flex;
+            justify-content: space-between;
+            gap: 20px;
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 8px;
+            border: 1px solid #dcdde1;
+            page-break-inside: avoid;
+            margin-top: 20px;
+            flex-wrap: wrap;
+        }
+
+        .recon-left { flex: 1; min-width: 280px; }
+        .recon-row { display: flex; justify-content: space-between; margin-bottom: 8px; font-size: 13px; align-items: center; }
+
+        .result-box {
+            padding: 10px;
+            border-radius: 6px;
+            font-weight: bold;
+            text-align: center;
+            margin-top: 10px;
+            font-size: 15px;
+        }
+        .short { background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+        .excess { background: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+
+        .recon-right {
+            text-align: right;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            min-width: 200px;
+        }
+
+        /* டேட் வாரியான லோடிங் கார்டுகள் */
+        .loading-cards-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+            gap: 10px;
+            margin-top: 15px;
+            page-break-inside: avoid;
+        }
+
+        .load-card {
+            background: #fff;
+            border: 1px solid #0083b0;
+            border-top: 3px solid #0083b0;
+            padding: 10px;
+            border-radius: 6px;
+            font-size: 11px;
+            page-break-inside: avoid;
+        }
+
+        .load-card-header {
+            background: #eef9fc;
+            font-weight: bold;
+            color: #0083b0;
+            padding: 4px;
+            margin-bottom: 6px;
+            border-radius: 3px;
+        }
+
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
+
+        .footer-signatures {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 30px;
+            padding-top: 15px;
+            border-top: 1px dashed #aaa;
+            page-break-inside: avoid;
+        }
+        .sig-line { border-top: 1.5px solid #333; width: 160px; text-align: center; font-weight: bold; font-size: 11px; padding-top: 4px; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div class="controls-bar">
+        <button class="btn-save" onclick="saveData()">Save Data</button>
+        <button class="btn-next" onclick="saveAndNextDay()">Save & Next Day</button>
+        <button class="btn-undo" onclick="undoPreviousDay()">Reset / Reload</button>
+        <button class="btn-pdf" onclick="downloadPDF()">Download PDF</button>
+    </div>
+
+    <div id="pdfPrintArea">
+        <div class="header">
+            <div class="header-left">
+                <div class="logo-box" onclick="document.getElementById('photoInput').click()">
+                    <span id="photoText">UPLOAD LOGO</span>
+                    <img id="userPhoto" style="display:none;">
+                </div>
+                <input type="file" id="photoInput" accept="image/*" style="display:none;" onchange="loadPhoto(event)">
+                
+                <div class="header-inputs">
+                    <h2 style="margin:0; font-size: 20px; text-transform: uppercase;">SST OFFICIAL STOCK MANAGER</h2>
+                    <input type="text" id="branchName" value="Main Branch" placeholder="Branch Name" style="width: 140px;">
+                    <input type="text" id="ownerName" value="Manager: SST" placeholder="Manager Name" style="width: 150px;">
+                </div>
+            </div>
+            <div>
+                <label style="font-size: 11px; font-weight: bold;">SELECT DATE:</label><br>
+                <input type="date" id="stockDate" style="background: #fff; color: #000; width: 130px; margin-top:3px;" onchange="loadDataForDate()">
+            </div>
+        </div>
+
+        <div class="tab-bar">
+            <button class="tab-btn active" onclick="switchTab('stockTab', this)">Stock Sheet & Sales</button>
+            <button class="tab-btn" onclick="switchTab('loadingTab', this)">Bulk Loading Sheet</button>
+        </div>
+
+        <!-- TAB 1: Stock Sheet -->
+        <div id="stockTab" class="tab-content active">
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+                <h3 style="margin:0; color:#0083b0;">Daily Stock Reconciliation</h3>
+                <input type="text" class="search-input" placeholder="🔍 Search Item..." onkeyup="filterTable('stockTableBody', this.value)">
+            </div>
+
+            <div class="table-wrap">
+                <table>
+                    <thead>
+                        <tr>
+                            <th class="col-name">Item Name</th>
+                            <th class="col-qty">Opening</th>
+                            <th class="col-qty">Loading</th>
+                            <th class="col-qty">Total</th>
+                            <th class="col-qty">Ending</th>
+                            <th class="col-price">Price (Rs.)</th>
+                            <th class="col-amt">Amount (Rs.)</th>
+                        </tr>
+                    </thead>
+                    <tbody id="stockTableBody"></tbody>
+                </table>
+            </div>
+
+            <div class="recon-section">
+                <div class="recon-left">
+                    <h4 style="margin:0 0 10px 0; color:#0083b0;">கல்லா சல்லி & கழிவுகள் கணக்கீடு</h4>
+                    <div class="recon-row">
+                        <span>Total Sales Amount:</span>
+                        <strong>Rs. <span id="lblGrandSales">0.00</span></strong>
+                    </div>
+                    <div class="recon-row">
+                        <span>கல்லா சல்லி (Cash in Hand):</span>
+                        <input type="number" id="cashInHand" value="0" style="width:90px;" oninput="calculateReconciliation()">
+                    </div>
+                    <div class="recon-row">
+                        <span>ரிட்டர்ன்ஸ் (Returns):</span>
+                        <input type="number" id="returnsAmount" value="0" style="width:90px;" oninput="calculateReconciliation()">
+                    </div>
+                    <div class="recon-row">
+                        <span>செலவுகள் (Expenses):</span>
+                        <input type="number" id="othersAmount" value="0" style="width:90px;" oninput="calculateReconciliation()">
+                    </div>
+                    <div id="reconResultBadge" class="result-box short">Short: Rs. 0.00</div>
+                </div>
+
+                <div class="recon-right">
+                    <span style="font-size: 14px; font-weight: bold; color: #555;">TOTAL SALES</span>
+                    <h1 style="margin:0; color: #27ae60; font-size: 32px;">Rs. <span id="grandTotalSales">0.00</span></h1>
+                </div>
+            </div>
+        </div>
+
+        <!-- TAB 2: Bulk Loading -->
+        <div id="loadingTab" class="tab-content">
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+                <h3 style="margin:0; color:#0083b0;">Loading Entry (For Selected Date)</h3>
+                <input type="text" class="search-input" placeholder="🔍 Search Item..." onkeyup="filterTable('loadingTableBody', this.value)">
+            </div>
+
+            <div class="table-wrap">
+                <table>
+                    <thead>
+                        <tr>
+                            <th class="col-name">Item Name</th>
+                            <th>Loading Qty Entered for Date</th>
+                        </tr>
+                    </thead>
+                    <tbody id="loadingTableBody"></tbody>
+                </table>
+            </div>
+            <div style="text-align: right;">
+                <button class="btn-save" onclick="saveBulkLoading()">Save Loading Sheet</button>
+            </div>
+        </div>
+
+        <!-- PDF லோடிங் ரிப்போர்ட் -->
+        <div style="margin-top: 25px; page-break-inside: avoid;">
+            <h4 style="margin:0; color:#0083b0;">Date-wise Loading Details for this Period</h4>
+            <div id="loadingHistoryContainer" class="loading-cards-grid"></div>
+
+            <div class="footer-signatures">
+                <div class="sig-line">Manager Signature</div>
+                <div class="sig-line">Owner Signature</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    let defaultItems = [
+        { name: "Roasted Peanuts Loose — 1kg", price: 2000.00 },
+        { name: "Roasted Peanuts Packet — 250g", price: 500.00 },
+        { name: "Fried Peanuts Loose — 1kg", price: 2000.00 },
+        { name: "Fried Peanuts Packet — 250g", price: 500.00 },
+        { name: "Devilled Peanuts Loose — 1kg", price: 2000.00 },
+        { name: "Devilled Peanuts Packet — 250g", price: 500.00 },
+        { name: "Masala Peanuts Loose — 1kg", price: 2000.00 },
+        { name: "Masala Peanuts Packet — 250g", price: 500.00 },
+        { name: "Roasted Chick Peas Loose — 1kg", price: 1500.00 },
+        { name: "Roasted Chick Peas Packet — 250g", price: 375.00 },
+        { name: "Fried Chick Peas Loose — 1kg", price: 1500.00 },
+        { name: "Fried Chick Peas Packet — 250g", price: 375.00 },
+        { name: "Fried Chick Peas Packet — 100g", price: 150.00 },
+        { name: "Fried Split Peas Loose — 1kg", price: 1500.00 },
+        { name: "Fried Split Peas Packet — 250g", price: 375.00 },
+        { name: "Green Peas Loose — 1kg", price: 1500.00 },
+        { name: "Green Peas Packet — 250g", price: 375.00 },
+        { name: "Green Peas Packet — 100g", price: 150.00 },
+        { name: "Multa Gram Loose — 1kg", price: 1500.00 },
+        { name: "Multa Gram Packet — 250g", price: 375.00 },
+        { name: "Tapioca Chips Loose — 1kg", price: 1500.00 },
+        { name: "Lanka Cocktail Mixture Loose — 1kg", price: 1500.00 },
+        { name: "Lanka Cocktail Mixture Packet — 500g", price: 750.00 },
+        { name: "Lanka Cocktail Mixture Packet — 250g", price: 375.00 },
+        { name: "Indian Baby Mixture Loose — 1kg", price: 1500.00 },
+        { name: "Indian Baby Mixture Packet — 500g", price: 750.00 },
+        { name: "Indian Baby Mixture Packet — 250g", price: 375.00 },
+        { name: "Special Wedding Mixture Loose — 1kg", price: 1500.00 },
+        { name: "Sugar Murukku Loose — 1kg", price: 1500.00 },
+        { name: "Sugar Murukku Packet — 250g", price: 375.00 },
+        { name: "Garlic Murukku Loose — 1kg", price: 1500.00 },
+        { name: "Garlic Murukku Packet — 250g", price: 375.00 },
+        { name: "Katu Murukku Loose — 1kg", price: 1500.00 },
+        { name: "Coil Murukku Loose — 1kg", price: 1800.00 },
+        { name: "Coil Murukku Packet — 250g", price: 450.00 },
+        { name: "New Spicy Karachew Loose — 1kg", price: 1500.00 },
+        { name: "New Spicy Karachew Packet — 250g", price: 375.00 },
+        { name: "New Spicy Karachew Packet — 100g", price: 150.00 },
+        { name: "Old Yellow Karachew Loose — 1kg", price: 1500.00 },
+        { name: "Old Yellow Karachew Packet — 250g", price: 375.00 },
+        { name: "Old Yellow Karachew Packet — 100g", price: 150.00 },
+        { name: "Spicy Ring Bites Loose — 1kg", price: 1500.00 },
+        { name: "Spicy Ring Bites Packet — 250g", price: 375.00 },
+        { name: "Spicy Ring Bites Packet — 100g", price: 150.00 },
+        { name: "Spicy Bola Bites Loose — 1kg", price: 1500.00 },
+        { name: "Spicy Bola Bites Packet — 250g", price: 375.00 },
+        { name: "Spicy Bola Bites Packet — 100g", price: 150.00 },
+        { name: "Fancy Gem Biscuits Loose — 1kg", price: 1500.00 },
+        { name: "Fancy Gem Biscuits Packet — 250g", price: 375.00 },
+        { name: "Fancy Gem Biscuits Packet — 100g", price: 1500.00 },
+        { name: "Wine Biscuits Loose — 1kg", price: 1500.00 },
+        { name: "Wine Biscuits Packet — 100g", price: 150.00 },
+        { name: "Diamond Loose — 1kg", price: 1500.00 },
+        { name: "Plums Loose — 1kg", price: 2000.00 },
+        { name: "Dates Loose — 1kg", price: 1200.00 },
+        { name: "Puhul Dosi Loose — 1kg", price: 1200.00 },
+        { name: "Red Boondhi Loose — 1kg", price: 1200.00 },
+        { name: "Ribbon Bite Loose — 1kg", price: 1500.00 },
+        { name: "Ribbon Bite Packet — 250g", price: 375.00 },
+        { name: "Ghee/Nei/Yellow Boondhi Loose — 1kg", price: 1500.00 },
+        { name: "Roasted Bengal Gram Packet — 250g", price: 450.00 },
+        { name: "Roasted Bengal Gram Packet — 100g", price: 180.00 },
+        { name: "Pista Packet — 100g", price: 550.00 },
+        { name: "Almonds Packet — 100g", price: 450.00 },
+        { name: "Devilled Cashew Nuts Packet — 250g", price: 1750.00 },
+        { name: "Devilled Cashew Nuts Packet — 100g", price: 700.00 },
+        { name: "Raw Cashew Nuts Packet — 250g", price: 1375.00 },
+        { name: "Raw Cashew Nuts Packet — 100g", price: 550.00 },
+        { name: "DAVID Big Coil Murukku Bottle — 75pcs", price: 0.00 },
+        { name: "DAVID Small Coil Murukku Bottle — 150pcs", price: 10.00 },
+        { name: "DAVID Kokis Bottle — 70pcs", price: 20.00 },
+        { name: "JN Milk White Cookies Box — Small", price: 300.00 },
+        { name: "JN Milk White Cookies Box — Large", price: 400.00 },
+        { name: "Haldiram's Soan Papdi — Large", price: 720.00 },
+        { name: "Honey Peanut Slab", price: 200.00 },
+        { name: "Marshmellow — Small", price: 130.00 },
+        { name: "Marshmellow — Large", price: 250.00 },
+        { name: "Thala Bola Large Packet", price: 200.00 },
+        { name: "Thala Bola Small Packet", price: 100.00 },
+        { name: "Thala Kerali Large", price: 20.00 },
+        { name: "Thala Kerali Large Packet", price: 200.00 },
+        { name: "Thala Roll Packet", price: 500.00 },
+        { name: "Boondhi/Pink Laddu Sweet Piece", price: 80.00 },
+        { name: "Jangiri Sweet Piece", price: 80.00 },
+        { name: "Burfee Colourful Sweet Piece", price: 80.00 },
+        { name: "Drinking Water Bottle — 1000ml", price: 100.00 },
+        { name: "Drinking Water Bottle — 500ml", price: 80.00 },
+        { name: "Soft Drinks Bottle — 1ltr", price: 200.00 },
+        { name: "Soft Drinks Bottle — 500ml", price: 120.00 },
+        { name: "Milo Drinks Carton", price: 100.00 },
+        { name: "Anchor Newdale Milk Carton", price: 200.00 },
+        { name: "David Bite Loose — 1kg", price: 1500.00 },
+        { name: "Banana Chips — 100g", price: 300.00 },
+        { name: "Sweet Mixture — 250g", price: 500.00 },
+        { name: "Spicy Mixture — 250g", price: 500.00 },
+        { name: "Kara Mixture — 250g", price: 500.00 },
+        { name: "Onion Pakoda — 250g", price: 450.00 },
+        { name: "Richlife Drinks", price: 150.00 },
+        { name: "Sun Crush Drinks", price: 150.00 },
+        { name: "Sun Crush Spinner Drinks", price: 150.00 },
+        { name: "Sun Crush Red Spinner Drinks", price: 150.00 },
+        { name: "Stick Chips — 100g", price: 180.00 },
+        { name: "Tomato Bite — 100g", price: 180.00 },
+        { name: "Mg — 100g", price: 150.00 },
+        { name: "RB — 100g", price: 150.00 },
+        { name: "JnCookis", price: 700.00 },
+        { name: "Chicken box", price: 250.00 },
+        { name: "challow coill murruku", price: 1500.00 },
+        { name: "coil murruku — 100g", price: 180.00 },
+        { name: "garlic murruku", price: 150.00 },
+        { name: "ribbon — 100g", price: 150.00 },
+        { name: "TIP TIP", price: 100.00 },
+        { name: "Sugar Murukku Packet — 100g", price: 150.00 }
+    ];
+
+    let currentStockData = [];
+    let singleDayLoading = [];
+
+    window.onload = function() {
+        document.getElementById('stockDate').valueAsDate = new Date();
+        loadDataForDate();
+    };
+
+    function switchTab(tabId, btn) {
+        document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+        document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
+        document.getElementById(tabId).classList.add('active');
+        btn.classList.add('active');
+    }
+
+    function calculateAccumulatedLoading(targetDateStr) {
+        let accumulatedLoading = new Array(defaultItems.length).fill(0);
+        let lastResetDate = localStorage.getItem('sst_last_reset_date');
+
+        for (let i = 0; i < localStorage.length; i++) {
+            let key = localStorage.key(i);
+            if (key.startsWith('sst_load_')) {
+                let dateOfLoad = key.replace('sst_load_', '');
+                if ((!lastResetDate || dateOfLoad > lastResetDate) && dateOfLoad <= targetDateStr) {
+                    let loadArray = JSON.parse(localStorage.getItem(key));
+                    loadArray.forEach((qty, idx) => {
+                        accumulatedLoading[idx] += Number(qty) || 0;
+                    });
+                }
+            }
+        }
+        return accumulatedLoading;
+    }
+
+    function loadDataForDate() {
+        let dateStr = document.getElementById('stockDate').value;
+        let savedStock = localStorage.getItem('sst_stock_' + dateStr);
+        let savedLoad = localStorage.getItem('sst_load_' + dateStr);
+
+        let accumulatedLoading = calculateAccumulatedLoading(dateStr);
+
+        if (savedStock) {
+            currentStockData = JSON.parse(savedStock);
+            currentStockData.forEach((item, idx) => {
+                item.loading = accumulatedLoading[idx];
+            });
+        } else {
+            let lastOpening = getLatestOpeningStock();
+            currentStockData = defaultItems.map((item, idx) => ({
+                ...item,
+                opening: lastOpening[idx] || 0,
+                loading: accumulatedLoading[idx],
+                ending: 0
+            }));
+        }
+
+        singleDayLoading = savedLoad ? JSON.parse(savedLoad) : new Array(defaultItems.length).fill(0);
+
+        renderStockTable();
+        renderLoadingTable();
+        renderDatewiseLoadingHistory();
+    }
+
+    function getLatestOpeningStock() {
+        let dateStr = document.getElementById('stockDate').value;
+        let dates = [];
+        for (let i = 0; i < localStorage.length; i++) {
+            let key = localStorage.key(i);
+            if (key.startsWith('sst_stock_')) {
+                dates.push(key.replace('sst_stock_', ''));
+            }
+        }
+        dates.sort();
+        let prevDates = dates.filter(d => d < dateStr);
+        if (prevDates.length > 0) {
+            let lastDate = prevDates[prevDates.length - 1];
+            let lastData = JSON.parse(localStorage.getItem('sst_stock_' + lastDate));
+            return lastData.map(item => item.ending);
+        }
+        return new Array(defaultItems.length).fill(0);
+    }
+
+    function renderStockTable() {
+        const tbody = document.getElementById('stockTableBody');
+        tbody.innerHTML = '';
+        let grandTotalSales = 0;
+
+        currentStockData.forEach((item, index) => {
+            let totalAll = Number(item.opening) + Number(item.loading);
+            let soldQty = totalAll - Number(item.ending);
+            if (soldQty < 0) soldQty = 0;
+            let amount = soldQty * Number(item.price);
+            grandTotalSales += amount;
+
+            tbody.innerHTML += `
+                <tr>
+                    <td class="col-name">${item.name}</td>
+                    <td class="col-qty"><input type="number" value="${item.opening}" onchange="updateStock(${index}, 'opening', this.value)"></td>
+                    <td class="col-qty" style="background:#eef9f5; font-weight:bold; color:#27ae60;">+${item.loading}</td>
+                    <td class="col-qty" style="font-weight:bold;">${totalAll}</td>
+                    <td class="col-qty"><input type="number" value="${item.ending}" onchange="updateStock(${index}, 'ending', this.value)"></td>
+                    <td class="col-price"><input type="number" value="${item.price}" onchange="updateStock(${index}, 'price', this.value)"></td>
+                    <td class="col-amt">${amount.toFixed(2)}</td>
+                </tr>
+            `;
+        });
+
+        document.getElementById('grandTotalSales').innerText = grandTotalSales.toFixed(2);
+        document.getElementById('lblGrandSales').innerText = grandTotalSales.toFixed(2);
+        calculateReconciliation();
+    }
+
+    function renderLoadingTable() {
+        const tbody = document.getElementById('loadingTableBody');
+        tbody.innerHTML = '';
+
+        currentStockData.forEach((item, index) => {
+            let currentVal = singleDayLoading[index] || 0;
+            tbody.innerHTML += `
+                <tr>
+                    <td class="col-name">${item.name}</td>
+                    <td><input type="number" id="loadInput_${index}" value="${currentVal}"></td>
+                </tr>
+            `;
+        });
+    }
+
+    function renderDatewiseLoadingHistory() {
+        const container = document.getElementById('loadingHistoryContainer');
+        container.innerHTML = '';
+
+        let targetDateStr = document.getElementById('stockDate').value;
+        let lastResetDate = localStorage.getItem('sst_last_reset_date');
+        
+        let loadingDates = [];
+        for (let i = 0; i < localStorage.length; i++) {
+            let key = localStorage.key(i);
+            if (key.startsWith('sst_load_')) {
+                let dateOfLoad = key.replace('sst_load_', '');
+                if ((!lastResetDate || dateOfLoad > lastResetDate) && dateOfLoad <= targetDateStr) {
+                    loadingDates.push(dateOfLoad);
+                }
+            }
+        }
+
+        loadingDates.sort();
+
+        if (loadingDates.length === 0) {
+            container.innerHTML = "<p style='font-size:12px; color:#777; italic;'>No loadings recorded for this period.</p>";
+            return;
+        }
+
+        loadingDates.forEach(date => {
+            let loadData = JSON.parse(localStorage.getItem('sst_load_' + date));
+            let listItemsHtml = "";
+
+            loadData.forEach((qty, idx) => {
+                if (Number(qty) > 0) {
+                    listItemsHtml += `<div>• ${defaultItems[idx].name} : <strong>+${qty}</strong></div>`;
+                }
+            });
+
+            if (listItemsHtml !== "") {
+                container.innerHTML += `
+                    <div class="load-card">
+                        <div class="load-card-header">📅 Date: ${date}</div>
+                        ${listItemsHtml}
+                    </div>
+                `;
+            }
+        });
+    }
+
+    function filterTable(tableBodyId, query) {
+        let rows = document.querySelectorAll(`#${tableBodyId} tr`);
+        query = query.toLowerCase();
+        rows.forEach(row => {
+            let name = row.querySelector('.col-name').innerText.toLowerCase();
+            row.style.display = name.includes(query) ? '' : 'none';
+        });
+    }
+
+    function updateStock(index, key, value) {
+        currentStockData[index][key] = Number(value);
+        renderStockTable();
+    }
+
+    function saveBulkLoading() {
+        let dateStr = document.getElementById('stockDate').value;
+        let loadArr = [];
+
+        currentStockData.forEach((item, index) => {
+            let val = Number(document.getElementById(`loadInput_${index}`).value) || 0;
+            loadArr.push(val);
+        });
+
+        localStorage.setItem('sst_load_' + dateStr, JSON.stringify(loadArr));
+        loadDataForDate();
+        alert("அன்றைய தேதிக்கான லோடிங் சேமிக்கப்பட்டது!");
+    }
+
+    function calculateReconciliation() {
+        let totalSales = parseFloat(document.getElementById('grandTotalSales').innerText) || 0;
+        let cashInHand = parseFloat(document.getElementById('cashInHand').value) || 0;
+        let returns = parseFloat(document.getElementById('returnsAmount').value) || 0;
+        let others = parseFloat(document.getElementById('othersAmount').value) || 0;
+
+        let diff = cashInHand - totalSales + returns + others;
+        let badge = document.getElementById('reconResultBadge');
+
+        if (diff < 0) {
+            badge.className = "result-box short";
+            badge.innerText = `Short: Rs. ${Math.abs(diff).toFixed(2)}`;
+        } else if (diff > 0) {
+            badge.className = "result-box excess";
+            badge.innerText = `Excess: Rs. ${diff.toFixed(2)}`;
+        } else {
+            badge.className = "result-box excess";
+            badge.innerText = `Balanced: Rs. 0.00`;
+        }
+    }
+
+    function saveData() {
+        let dateStr = document.getElementById('stockDate').value;
+        localStorage.setItem('sst_stock_' + dateStr, JSON.stringify(currentStockData));
+        alert("தரவுகள் சேமிக்கப்பட்டன!");
+    }
+
+    function saveAndNextDay() {
+        if (confirm("இன்றைய தினத்தைச் சேமித்துவிட்டு அடுத்த நாளுக்கு மாற வேண்டுமா?")) {
+            let dateStr = document.getElementById('stockDate').value;
+            localStorage.setItem('sst_stock_' + dateStr, JSON.stringify(currentStockData));
+            localStorage.setItem('sst_last_reset_date', dateStr);
+
+            let nextDayData = currentStockData.map(item => ({
+                ...item,
+                opening: item.ending,
+                loading: 0,
+                ending: 0
+            }));
+
+            let currentDate = new Date(dateStr);
+            currentDate.setDate(currentDate.getDate() + 1);
+            let nextDateStr = currentDate.toISOString().split('T')[0];
+            
+            document.getElementById('stockDate').value = nextDateStr;
+            localStorage.setItem('sst_stock_' + nextDateStr, JSON.stringify(nextDayData));
+            
+            loadDataForDate();
+            alert("அடுத்த நாளுக்கான கணக்கு தொடங்கப்பட்டது!");
+        }
+    }
+
+    function undoPreviousDay() {
+        loadDataForDate();
+    }
+
+    function downloadPDF() {
+        const element = document.getElementById('pdfPrintArea');
+        let dateStr = document.getElementById('stockDate').value;
+
+        // PDF கட்டாகாமல் முழு அட்டவணையும் வர வைக்க சரியான scaled size
+        let opt = {
+            margin:       [0.2, 0.2, 0.2, 0.2],
+            filename:     `SST_Stock_Report_${dateStr}.pdf`,
+            image:        { type: 'jpeg', quality: 0.98 },
+            html2canvas:  { scale: 2, useCORS: true },
+            pagebreak:    { mode: ['avoid-all', 'css', 'legacy'] },
+            jsPDF:        { unit: 'in', format: 'a4', orientation: 'portrait' }
+        };
+
+        html2pdf().set(opt).from(element).save();
+    }
+
+    function loadPhoto(event) {
+        let reader = new FileReader();
+        reader.onload = function() {
+            let img = document.getElementById('userPhoto');
+            img.src = reader.result;
+            img.style.display = 'block';
+            document.getElementById('photoText').style.display = 'none';
+        };
+        reader.readAsDataURL(event.target.files[0]);
+    }
+</script>
+
+</body>
+</html>
